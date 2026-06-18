@@ -10,6 +10,7 @@
   python train.py --tag myadam --optimizer myadam
   python train.py --quick                      # 本地 CPU 冒烟
 """
+import npu_compat  # noqa: F401  必须在 import torch 之前
 import argparse
 import json
 import os

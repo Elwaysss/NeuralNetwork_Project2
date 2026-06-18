@@ -9,6 +9,7 @@ VGG-A 训练与损失景观相关的工具函数。
 为了有/无 BN 的对比公平，train 里按"训练步(step)"而不是"epoch"记录 loss，
 这样画损失景观时横轴就是优化步数。
 """
+import npu_compat  # noqa: F401  必须在 import torch 之前
 import os
 import random
 

@@ -9,6 +9,7 @@
   python visualize.py --ckpt results/baseline_best.pth
   python visualize.py --ckpt results/baseline_best.pth --quick
 """
+import npu_compat  # noqa: F401  必须在 import torch 之前
 import argparse
 import copy
 import os

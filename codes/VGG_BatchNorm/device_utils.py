@@ -1,4 +1,5 @@
 """设备选择：昇腾 NPU 优先，没有就退回 CPU（本地调试用）。"""
+import npu_compat  # noqa: F401  必须在 import torch 之前
 import torch
 
 

@@ -3,6 +3,7 @@
 在 ModelArts 的 JupyterLab 终端里跑：python test_ascend_npu.py
 看到最后的 "Ascend NPU 基本可用性测试完成" 就说明环境没问题。
 """
+import npu_compat  # noqa: F401  必须在 import torch 之前
 import os
 import sys
 import time

@@ -10,6 +10,7 @@
   python bn_compare.py                # 完整训练（云端 NPU）
   python bn_compare.py --quick        # 本地 CPU 冒烟测试
 """
+import npu_compat  # noqa: F401  必须在 import torch 之前
 import argparse
 import os
 
