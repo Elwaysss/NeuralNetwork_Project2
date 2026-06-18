@@ -12,10 +12,13 @@
 % 图片：优先用本目录 figures/（方便上传 Overleaf），找不到再回退到源目录
 \graphicspath{{figures/}{../part1_cifar10/figures/}{../codes/VGG_BatchNorm/figures/}}
 
-% 图片还没跑出来时也能编译通过
+% 图片还没跑出来时也能编译通过（\IfFileExists 不认 \graphicspath，故逐路径判断）
 \newcommand{\fig}[3]{%
-  \IfFileExists{#1}{\includegraphics[width=#2]{#1}}%
-  {\fbox{\parbox[c][3cm][c]{#2}{\centering 待补图：\texttt{#3}}}}}
+  \IfFileExists{figures/#1}{\includegraphics[width=#2]{figures/#1}}%
+  {\IfFileExists{../part1_cifar10/figures/#1}{\includegraphics[width=#2]{../part1_cifar10/figures/#1}}%
+  {\IfFileExists{../codes/VGG_BatchNorm/figures/#1}{\includegraphics[width=#2]{../codes/VGG_BatchNorm/figures/#1}}%
+  {\IfFileExists{#1}{\includegraphics[width=#2]{#1}}%
+  {\fbox{\parbox[c][3cm][c]{#2}{\centering 待补图：\texttt{#3}}}}}}}}
 
 \title{Project-2：CIFAR-10 图像分类与 Batch Normalization 探究}
 \author{马静\quad 23300180134}
