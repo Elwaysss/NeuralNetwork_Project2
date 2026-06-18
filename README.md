@@ -50,5 +50,5 @@ cd codes/VGG_BatchNorm && bash run.sh && cd ..
 
 ## 数据集与模型权重
 
-- 数据集：CIFAR-10，可由代码自动下载，或见官网 https://www.cs.toronto.edu/~kriz/cifar.html
-- 训练好的模型权重：<待补充：网盘链接>
+- 数据集：CIFAR-10，运行脚本时自动下载，或见官网 https://www.cs.toronto.edu/~kriz/cifar.html
+- 模型权重（基线 CNN + VGG-A 有/无 BN）：https://pan.quark.cn/s/3c01505088ab（提取码：8jBk）

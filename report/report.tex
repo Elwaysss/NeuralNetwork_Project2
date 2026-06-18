@@ -30,16 +30,17 @@
 \begin{center}
 \small
 代码仓库：\url{https://github.com/Elwaysss/NeuralNetwork_Project2}\\
-模型权重（含最优 CNN 与 VGG-A 有/无 BN）：\url{https://pan.quark.cn/s/3c01505088ab}（提取码：8jBk）\\
-数据集 CIFAR-10：训练脚本运行时自动下载，官方地址 \url{https://www.cs.toronto.edu/~kriz/cifar.html}
+模型权重（基线 CNN 与 VGG-A 有/无 BN）：\url{https://pan.quark.cn/s/3c01505088ab}（提取码：8jBk）\\
+数据集 CIFAR-10：运行 \texttt{train.py} / \texttt{loaders.py} 时自动下载；也可从官网获取：\url{https://www.cs.toronto.edu/~kriz/cifar.html}
 \end{center}
 
 \begin{abstract}
-本报告完成了课程 Project-2 的两个任务。任务一中我从零搭建了一个 ResNet 风格的小型卷积网络，
-在 CIFAR-10 上做了关于网络宽度、激活函数、损失/正则、优化器的系统消融，并自己实现了 SGD 与 Adam
-两个优化器与官方实现对比；此外通过卷积核可视化、损失景观和 Grad-CAM 对模型进行了解释。
-任务二中我在 VGG-A 上加入 Batch Normalization，对比了有无 BN 的训练表现，并复现了 loss landscape
-实验，从损失波动、梯度可预测性和 ``effective $\beta$-smoothness'' 三个角度说明 BN 为何能让优化更稳。
+本报告完成了 Project-2 的两个任务。任务一中我搭建了一个 ResNet 风格的小型卷积网络，
+在 CIFAR-10 上分别做了宽度、激活函数、损失/正则、优化器等方面的消融实验，并自己实现了 SGD 与 Adam
+两个优化器，与 \texttt{torch.optim} 中的官方实现做了对比；此外还画了卷积核、损失景观和 Grad-CAM 图，
+对模型行为做了简单解释。
+任务二中我在 VGG-A 上加入 Batch Normalization，对比了有无 BN 时的训练曲线，并按作业要求复现了
+loss landscape 实验，从损失波动、梯度可预测性和 effective $\beta$-smoothness 三个指标观察 BN 对优化过程的影响。
 \end{abstract}
 
 \section{任务一：在 CIFAR-10 上训练网络}
@@ -97,7 +98,7 @@ batch size 128，\textbf{所有实验（含基线与消融）均训练 25 个 ep
 \paragraph{(c) 激活函数}
 对比 ReLU / LeakyReLU / GELU。25 epoch 下 GELU(91.34\%) > LeakyReLU(90.82\%) > ReLU 基线(90.44\%)。
 LeakyReLU 通过负区间小斜率缓解“死亡 ReLU”，GELU 的平滑非线性进一步带来约 0.9 个百分点的提升，
-且三者计算开销几乎一致（约 17--19 ms/batch），说明激活函数选择对本网络有稳定但 moderate 的影响。
+且三者计算开销几乎一致（约 17--19 ms/batch），说明激活函数选择对本网络有稳定但有限的影响。
 
 \begin{table}[h]
 \centering
@@ -233,23 +234,20 @@ O_{b,c,x,y} = \gamma_c \frac{I_{b,c,x,y}-\mu_c}{\sqrt{\sigma_c^2+\epsilon}} + \b
 \label{fig:landscape}
 \end{figure}
 
-从图~\ref{fig:landscape} 可见，在四个学习率 $\{1\text{e-}3,2\text{e-}3,1\text{e-}4,5\text{e-}4\}$ 上取得的
-loss 上下界所围成的“带”，加 BN（红）后整体更窄、位置更低，且训练后期波动更小；相比之下无 BN（绿）的带
-更宽、loss 更高、抖动更剧烈。梯度可预测性（相邻步梯度的 L2 差）和 effective $\beta$-smoothness 两张图上，
-加 BN 后数值整体更小，说明梯度随参数变化更平缓。综合三张图：BN 让损失曲面变得更平滑、梯度更可预测，
-因此对学习率不再那么敏感，可以用更大的学习率而不发散、训练更稳定。这与 Santurkar 等人（NeurIPS 2018）
-“BN 的核心作用是平滑优化曲面（而非单纯减少内部协变量偏移）”的结论一致。
+从图~\ref{fig:landscape} 可以看到，在四个学习率 $\{1\text{e-}3,2\text{e-}3,1\text{e-}4,5\text{e-}4\}$ 上，
+加 BN（红）对应的 loss 带整体更窄、位置更低，训练后期波动也更小；无 BN（绿）的带更宽、loss 更高。
+梯度可预测性和 effective $\beta$-smoothness 两张图上，加 BN 后数值普遍更小，说明相邻 step 之间梯度变化更平缓。
+结合三张图，我的理解是：BN 让损失曲面更平滑、梯度更好预测，因此训练对学习率不那么敏感，相同设置下更不容易发散。
+这与 Santurkar 等人（NeurIPS 2018）关于 BN 平滑优化曲面的结论基本一致。
 
 \section{结论}
-本报告完成了 Project-2 的两个任务。任务一中，自建的 ResNet 风格小网络在 CIFAR-10 上基线配置取得 90.44\% 测试准确率，
-消融最高达 91.42\%（width96）；所有消融均在 25 epoch 同条件下完成，对比公平。
-结果表明：宽度增大稳定提升精度但收益递减、width64 性价比最高；GELU 优于 LeakyReLU 优于 ReLU；
-weight decay 对抑制过拟合作用显著（去掉后降 2.34 个百分点）；BN 是对稳定训练最关键的组件（去掉后降 3.18 个百分点），
-残差次之；Dropout 在本网络上 25 epoch 内测试收益不明显；SGD+momentum 优于自适应优化器，
-且自实现的 MySGD/MyAdam 与官方实现结果几乎一致，验证了实现的正确性；
-可视化进一步显示网络学到了合理的低级特征、收敛到平坦极小值、并关注正确的语义区域。
-任务二中，为 VGG-A 加入 BN 后准确率从 77.04\% 提升到 80.83\%，并通过 loss landscape、梯度可预测性与
-$\beta$-smoothness 三个角度验证了 BN 通过平滑优化曲面来加速并稳定训练这一机制。
+任务一中，基线配置在 CIFAR-10 上取得 90.44\% 测试准确率；消融实验均在 25 epoch 同条件下完成，
+其中 width96 最高（91.42\%），GELU 在同参数量下也能到 91.34\%。从结果看，增大宽度、换 GELU、
+保留 weight decay 和 BN 都能带来稳定收益；去掉 BN 影响最大，Dropout 在本网络上 25 epoch 内测试收益不明显。
+优化器方面，SGD+momentum 略优于 Adam/AdamW；自实现的 MySGD/MyAdam 与官方结果接近，说明实现基本正确。
+可视化结果也表明网络主要关注目标区域，而不是背景。
+任务二中，VGG-A 加 BN 后验证准确率从 77.04\% 提升到 80.83\%；loss landscape 相关三张图进一步说明
+BN 能减小不同学习率下的 loss 波动，使优化过程更平稳。
 
 \begin{thebibliography}{9}
 \bibitem{pytorch} PyTorch CIFAR-10 tutorial. \url{https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html}
