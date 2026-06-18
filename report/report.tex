@@ -9,8 +9,8 @@
 \usepackage{hyperref}
 \hypersetup{colorlinks=true, urlcolor=blue, linkcolor=black}
 
-% 图片在两个子目录里
-\graphicspath{{../part1_cifar10/figures/}{../codes/VGG_BatchNorm/figures/}}
+% 图片：优先用本目录 figures/（方便上传 Overleaf），找不到再回退到源目录
+\graphicspath{{figures/}{../part1_cifar10/figures/}{../codes/VGG_BatchNorm/figures/}}
 
 % 图片还没跑出来时也能编译通过
 \newcommand{\fig}[3]{%
