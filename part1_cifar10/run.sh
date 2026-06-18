@@ -11,6 +11,7 @@ ABL_EPOCHS=${ABL_EPOCHS:-30}
 echo "==== 检查依赖 ===="
 python - <<'PY'
 import importlib, subprocess, sys
+import npu_compat  # 在 import torch/torchvision 之前打兼容补丁
 for pkg in ["torchvision", "matplotlib"]:
     try:
         importlib.import_module(pkg)

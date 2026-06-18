@@ -5,9 +5,12 @@ set -e
 
 cd "$(dirname "$0")"
 
+EPOCHS=${EPOCHS:-20}
+
 echo "==== 检查依赖 ===="
 python - <<'PY'
 import importlib, subprocess, sys
+import npu_compat  # 在 import torch/torchvision 之前打兼容补丁
 for pkg in ["torchvision", "tqdm", "matplotlib"]:
     try:
         importlib.import_module(pkg)
@@ -17,9 +20,9 @@ for pkg in ["torchvision", "tqdm", "matplotlib"]:
 PY
 
 echo "==== 2.2 有/无 BN 对比 ===="
-python bn_compare.py --epochs 20
+python bn_compare.py --epochs $EPOCHS
 
 echo "==== 2.3 损失景观 ===="
-python loss_landscape.py --epochs 20
+python loss_landscape.py --epochs $EPOCHS
 
 echo "==== 完成，结果在 figures/ 与 results/ ===="
