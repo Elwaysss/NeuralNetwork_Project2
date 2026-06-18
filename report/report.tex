@@ -77,28 +77,27 @@ Dropout & 分类头中 \texttt{Dropout(0.5)} \\
 
 \subsection{实验设置}
 统一用 SGD（momentum 0.9，weight decay $5\times10^{-4}$），初始学习率 0.1，配合 cosine 退火，
-batch size 128。基线训练 \textbf{25} 个 epoch 取得最终最优结果；为节省算力，所有消融与优化器
-对比统一训练 \textbf{12} 个 epoch（cosine 周期同为 12，故组内可公平比较）。所有实验固定随机种子 2020。
-硬件为华为云昇腾 NPU（snt9b）。
+batch size 128，\textbf{所有实验（含基线与消融）均训练 25 个 epoch}，保证对比完全同条件。
+所有实验固定随机种子 2020，硬件为华为云昇腾 NPU（snt9b）。
 
 \subsection{消融实验}
 
 \paragraph{(a) 滤波器数量（宽度）}
-对比基础通道数 32 / 64 / 96，结果见表~\ref{tab:ablation}。在同样 12 个 epoch 下，宽度 32 仅 0.71M 参数、
-准确率 83.37\%；宽度 96 参数量涨到 6.39M、准确率 87.45\%。准确率随宽度单调上升，但 32$\to$64 的提升
-（约 3 个百分点）明显大于 64$\to$96（约 1 个百分点），同时 96 的显存与计算开销最大（20.1 ms/batch）。
-综合精度与开销，宽度 64 是性价比拐点，故选作基线。
+对比基础通道数 32 / 64 / 96，结果见表~\ref{tab:ablation}。在同样 25 个 epoch 下，宽度 32 仅 0.71M 参数、
+准确率 88.17\%；基线 width64 为 90.44\%；宽度 96 参数量涨到 6.39M、准确率达到 91.42\%。
+准确率随宽度单调上升，但 32$\to$64 的提升（约 2.3 个百分点）大于 64$\to$96（约 1.0 个百分点），
+同时 96 的计算开销最大（20.3 ms/batch）。综合精度与开销，宽度 64 仍是性价比最高的基线选择；
+若追求极限精度，width96 可再提升约 1 个百分点。
 
 \paragraph{(b) 损失函数与正则}
 对比了普通交叉熵、交叉熵 + L2 正则（weight decay $5\times10^{-4}$）、交叉熵 + label smoothing(0.1)。
-去掉 weight decay 后准确率从默认的约 86.6\%（见表~\ref{tab:optim} 的 MySGD，即同配置 12 epoch 参考）跌到
-83.95\%，说明 L2 正则对抑制过拟合作用明显；label smoothing 达到 86.81\%，与带 weight decay 的基线相当，
-它通过软化标签缓解了模型对单一类别的过度自信，训练 loss 整体偏高（标签不再是 one-hot）但泛化稳定。
+去掉 weight decay 后准确率从基线 90.44\% 跌到 88.10\%（降 2.34 个百分点），说明 L2 正则对抑制过拟合
+作用明显；label smoothing 达到 90.58\%，与基线相当，它通过软化标签缓解过度自信，训练 loss 偏高但泛化稳定。
 
 \paragraph{(c) 激活函数}
-对比 ReLU / LeakyReLU / GELU。12 epoch 下 GELU(88.45\%) > LeakyReLU(87.08\%) > ReLU（基线同配置约 86.6\%）。
-LeakyReLU 通过负区间的小斜率缓解了“死亡 ReLU”，GELU 的平滑非线性进一步带来收益，且三者计算开销几乎一致
-（约 17 ms/batch），因此在本任务中 GELU 是更优的激活函数选择。
+对比 ReLU / LeakyReLU / GELU。25 epoch 下 GELU(91.34\%) > LeakyReLU(90.82\%) > ReLU 基线(90.44\%)。
+LeakyReLU 通过负区间小斜率缓解“死亡 ReLU”，GELU 的平滑非线性进一步带来约 0.9 个百分点的提升，
+且三者计算开销几乎一致（约 17--19 ms/batch），说明激活函数选择对本网络有稳定但 moderate 的影响。
 
 \begin{table}[h]
 \centering
@@ -108,30 +107,28 @@ LeakyReLU 通过负区间的小斜率缓解了“死亡 ReLU”，GELU 的平滑
 \toprule
 配置 & 参数量 & 训练速度(ms/batch) & 测试准确率 \\
 \midrule
-基线(width64, ReLU, SGD, 25ep) & 2.84M & 16.6 & \textbf{90.44\%} \\
-\midrule
-width32 (12ep) & 0.71M & 16.9 & 83.37\% \\
-width96 (12ep) & 6.39M & 20.1 & 87.45\% \\
-LeakyReLU (12ep) & 2.84M & 17.2 & 87.08\% \\
-GELU (12ep) & 2.84M & 17.3 & 88.45\% \\
-无 weight decay (12ep) & 2.84M & 16.0 & 83.95\% \\
-label smoothing (12ep) & 2.84M & 19.8 & 86.81\% \\
-去掉 BN (12ep) & 2.84M & 14.9 & 82.73\% \\
-去掉残差 (12ep) & 2.80M & 16.0 & 85.01\% \\
-去掉 Dropout (12ep) & 2.84M & 17.0 & 87.97\% \\
+基线(width64, ReLU, SGD) & 2.84M & 16.6 & 90.44\% \\
+width32 & 0.71M & 18.1 & 88.17\% \\
+width96 & 6.39M & 20.3 & \textbf{91.42\%} \\
+LeakyReLU & 2.84M & 17.7 & 90.82\% \\
+GELU & 2.84M & 18.7 & 91.34\% \\
+无 weight decay & 2.84M & 18.4 & 88.10\% \\
+label smoothing & 2.84M & 17.7 & 90.58\% \\
+去掉 BN & 2.84M & 16.1 & 87.26\% \\
+去掉残差 & 2.80M & 16.4 & 89.65\% \\
+去掉 Dropout & 2.84M & 17.7 & 90.96\% \\
 \bottomrule
 \end{tabular}
 
 \vspace{2pt}
-{\footnotesize 注：基线为完整 25 epoch 的最终结果；其余消融为节省算力统一 12 epoch，
-同配置 12 epoch 的参考准确率约 86.6\%（见表~\ref{tab:optim} 的 MySGD）。}
+{\footnotesize 注：所有实验均为 25 epoch、同条件对比；加粗为消融组最高准确率（width96）。}
 \end{table}
 
 \paragraph{(d) 关键组件}
-逐一移除三个可选组件：去掉 BN 时准确率跌至 82.73\%（降幅最大，且训练初期 loss 更高、更难收敛），
-说明 BN 对本网络的稳定训练最关键；去掉残差连接降到 85.01\%，残差缓解了深层网络的优化困难；
-去掉 Dropout 在 12 epoch 反而略高（87.97\%），这是因为短训练下模型尚处于欠拟合，Dropout 的正则作用
-还来不及体现——其收益要在更长训练（如基线 25 epoch）中才能稳定显现。
+逐一移除三个可选组件：去掉 BN 时准确率跌至 87.26\%（降幅最大 3.18 个百分点，且训练初期 loss 更高、更难收敛），
+说明 BN 对本网络的稳定训练最关键；去掉残差连接降到 89.65\%（降 0.79 个百分点），残差缓解了深层优化困难；
+去掉 Dropout 为 90.96\%，略高于基线 90.44\%（+0.52 个百分点），但训练准确率更高（96.6\% vs 94.7\%），
+说明 Dropout 在本网络上主要起轻微正则作用，25 epoch 内测试集差异不大，更长训练或更强过拟合时 Dropout 收益可能更明显。
 
 \subsection{优化器对比（含自实现）}
 除用 \texttt{torch.optim} 对比 SGD / Adam / AdamW 外，我还在 \texttt{optimizers.py} 里
@@ -142,11 +139,12 @@ m_t = \beta_1 m_{t-1} + (1-\beta_1) g_t,\quad
 v_t = \beta_2 v_{t-1} + (1-\beta_2) g_t^2,\quad
 \theta_t = \theta_{t-1} - \eta \frac{\hat m_t}{\sqrt{\hat v_t}+\epsilon}.
 \]
-自实现版本与官方版本训练曲线基本重合（见表~\ref{tab:optim}），说明实现正确：MyAdam 85.83\% 与官方
-Adam 85.99\% 仅差 0.16 个百分点，MySGD 86.62\% 也与官方 SGD 同量级。从优化器选择看，在该任务上
-SGD+momentum+cosine（86.62\%）优于自适应方法 Adam(85.99\%)/AdamW(84.65\%)，这与 CIFAR 类视觉任务
-“调好的 SGD 往往泛化更好”的经验一致。代价方面，MyAdam 因是纯 Python 逐参数更新，速度最慢
-（28.3 ms/batch，约为官方实现的 1.5 倍），但结果正确，仅用于验证实现而非追求效率。
+自实现版本与官方版本训练曲线基本重合（见表~\ref{tab:optim}），说明实现正确：MyAdam 89.38\% 与官方
+Adam 89.29\% 仅差 0.09 个百分点，MySGD 90.22\% 与基线 SGD(90.44\%) 同量级（同配置下的正常波动）。
+从优化器选择看，在该任务上 SGD+momentum+cosine（基线 90.44\%）优于自适应方法
+Adam(89.29\%)/AdamW(88.41\%)，这与 CIFAR 类视觉任务“调好的 SGD 往往泛化更好”的经验一致。
+代价方面，MyAdam 因是纯 Python 逐参数更新，速度最慢（26.4 ms/batch，约为官方 Adam 的 1.3 倍），
+但结果正确，仅用于验证实现而非追求效率。
 
 \begin{table}[h]
 \centering
@@ -156,15 +154,16 @@ SGD+momentum+cosine（86.62\%）优于自适应方法 Adam(85.99\%)/AdamW(84.65\
 \toprule
 优化器 & 测试准确率 & 备注 \\
 \midrule
-Adam(torch) & 85.99\% & lr 1e-3 \\
-AdamW(torch) & 84.65\% & lr 1e-3 \\
-MySGD(自实现) & 86.62\% & 对照 SGD，lr 0.1 \\
-MyAdam(自实现) & 85.83\% & 对照 Adam，与官方仅差 0.16\% \\
+SGD(基线) & 90.44\% & lr 0.1，同配置参考 \\
+Adam(torch) & 89.29\% & lr 1e-3 \\
+AdamW(torch) & 88.41\% & lr 1e-3 \\
+MySGD(自实现) & 90.22\% & 对照 SGD，lr 0.1 \\
+MyAdam(自实现) & 89.38\% & 对照 Adam，与官方仅差 0.09\% \\
 \bottomrule
 \end{tabular}
 
 \vspace{2pt}
-{\footnotesize 注：均为 12 epoch；MySGD 即基线同配置（width64/ReLU/SGD/CE/wd），可作消融的 12 epoch 参考点。}
+{\footnotesize 注：均为 25 epoch；MySGD 与基线同配置（width64/ReLU/SGD/CE/wd）。}
 \end{table}
 
 \subsection{可视化与可解释性}
@@ -187,8 +186,9 @@ MyAdam(自实现) & 85.83\% & 对照 Adam，与官方仅差 0.16\% \\
 而非背景，表明分类决策依据的是正确的语义区域。
 
 \subsection{最优结果}
-最终最好测试准确率 \textbf{90.44\%}（测试误差 \textbf{9.56\%}），模型参数量约 \textbf{2.84M}，
-对应基线配置训练 25 个 epoch。
+基线配置（width64, ReLU, SGD）测试准确率 \textbf{90.44\%}（误差 9.56\%），参数量约 \textbf{2.84M}。
+在所有 25 epoch 同条件消融中，最高准确率为 width96 的 \textbf{91.42\%}，同参数量下 GELU 激活达 \textbf{91.34\%}，
+说明仍有小幅提升空间，但基线配置在精度与开销之间取得了较好平衡。
 
 \section{任务二：Batch Normalization}
 
@@ -241,10 +241,12 @@ loss 上下界所围成的“带”，加 BN（红）后整体更窄、位置更
 “BN 的核心作用是平滑优化曲面（而非单纯减少内部协变量偏移）”的结论一致。
 
 \section{结论}
-本报告完成了 Project-2 的两个任务。任务一中，自建的 ResNet 风格小网络在 CIFAR-10 上取得 90.44\% 的测试准确率；
-系统消融表明：宽度增大稳定提升精度但收益递减、宽度 64 性价比最高；GELU 优于 LeakyReLU 优于 ReLU；
-weight decay 与 label smoothing 均有效抑制过拟合；BN 是对稳定训练最关键的组件，残差次之，Dropout 的收益需更长训练才能显现；
-SGD+momentum 在该任务上优于自适应优化器，且自实现的 MySGD/MyAdam 与官方实现结果几乎一致，验证了实现的正确性；
+本报告完成了 Project-2 的两个任务。任务一中，自建的 ResNet 风格小网络在 CIFAR-10 上基线配置取得 90.44\% 测试准确率，
+消融最高达 91.42\%（width96）；所有消融均在 25 epoch 同条件下完成，对比公平。
+结果表明：宽度增大稳定提升精度但收益递减、width64 性价比最高；GELU 优于 LeakyReLU 优于 ReLU；
+weight decay 对抑制过拟合作用显著（去掉后降 2.34 个百分点）；BN 是对稳定训练最关键的组件（去掉后降 3.18 个百分点），
+残差次之；Dropout 在本网络上 25 epoch 内测试收益不明显；SGD+momentum 优于自适应优化器，
+且自实现的 MySGD/MyAdam 与官方实现结果几乎一致，验证了实现的正确性；
 可视化进一步显示网络学到了合理的低级特征、收敛到平坦极小值、并关注正确的语义区域。
 任务二中，为 VGG-A 加入 BN 后准确率从 77.04\% 提升到 80.83\%，并通过 loss landscape、梯度可预测性与
 $\beta$-smoothness 三个角度验证了 BN 通过平滑优化曲面来加速并稳定训练这一机制。
