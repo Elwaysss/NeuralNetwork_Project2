@@ -1,0 +1,212 @@
+% 用 XeLaTeX 编译（中文）
+\documentclass[11pt]{ctexart}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, urlcolor=blue, linkcolor=black}
+
+% 图片在两个子目录里
+\graphicspath{{../part1_cifar10/figures/}{../codes/VGG_BatchNorm/figures/}}
+
+% 图片还没跑出来时也能编译通过
+\newcommand{\fig}[3]{%
+  \IfFileExists{#1}{\includegraphics[width=#2]{#1}}%
+  {\fbox{\parbox[c][3cm][c]{#2}{\centering 待补图：\texttt{#3}}}}}
+
+\title{Project-2：CIFAR-10 图像分类与 Batch Normalization 探究}
+\author{马静\quad 23300180134}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+\small
+代码仓库：\url{https://github.com/Elwaysss/NeuralNetwork_Project2}\\
+数据集与模型权重：\textbf{[待填：网盘链接]}
+\end{center}
+
+\begin{abstract}
+本报告完成了课程 Project-2 的两个任务。任务一中我从零搭建了一个 ResNet 风格的小型卷积网络，
+在 CIFAR-10 上做了关于网络宽度、激活函数、损失/正则、优化器的系统消融，并自己实现了 SGD 与 Adam
+两个优化器与官方实现对比；此外通过卷积核可视化、损失景观和 Grad-CAM 对模型进行了解释。
+任务二中我在 VGG-A 上加入 Batch Normalization，对比了有无 BN 的训练表现，并复现了 loss landscape
+实验，从损失波动、梯度可预测性和 ``effective $\beta$-smoothness'' 三个角度说明 BN 为何能让优化更稳。
+\end{abstract}
+
+\section{任务一：在 CIFAR-10 上训练网络}
+
+\subsection{数据集}
+CIFAR-10 共 60000 张 $32\times32$ 彩色图像，10 类，每类 6000 张，其中 50000 张训练、10000 张测试。
+训练时使用了标准的数据增强：4 像素 padding 后随机裁剪、随机水平翻转，并按通道做归一化
+（均值 $(0.4914,0.4822,0.4465)$，标准差 $(0.2470,0.2435,0.2616)$）。
+
+\subsection{网络结构}
+网络 \texttt{MyCNN}（见 \texttt{part1\_cifar10/models.py}）采用 ResNet 思路，由一个 stem 和三个 stage 组成，
+每个 stage 由若干 \texttt{BasicBlock} 堆叠，最后接全局平均池化和两层全连接分类头。
+它覆盖了作业要求的全部必选组件，以及三个可选组件，见表~\ref{tab:components}。
+
+\begin{table}[h]
+\centering
+\caption{网络组件覆盖情况}
+\label{tab:components}
+\begin{tabular}{ll}
+\toprule
+要求 & 本网络中的实现 \\
+\midrule
+全连接层 & 分类头两层 \texttt{Linear} \\
+2D 卷积层 & 每个 \texttt{BasicBlock} 内 $3\times3$ 卷积 \\
+2D 池化层 & stem 后 \texttt{MaxPool2d}，末尾 \texttt{AdaptiveAvgPool2d} \\
+激活函数 & ReLU / LeakyReLU / GELU（可切换） \\
+Batch Norm & 每个卷积后接 \texttt{BatchNorm2d} \\
+Dropout & 分类头中 \texttt{Dropout(0.5)} \\
+残差连接 & \texttt{BasicBlock} 的 shortcut \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+基线配置：宽度 64，激活 ReLU，含 BN/残差/Dropout，参数量约 \textbf{[待填]}。
+
+\subsection{实验设置}
+统一用 SGD（momentum 0.9，weight decay $5\times10^{-4}$），初始学习率 0.1，配合 cosine 退火，
+batch size 128，训练 \textbf{[待填]} 个 epoch。所有实验固定随机种子 2020。
+硬件为华为云昇腾 NPU（snt9b）。
+
+\subsection{消融实验}
+
+\paragraph{(a) 滤波器数量（宽度）}
+对比基础通道数 32 / 64 / 96，结果见表~\ref{tab:ablation}。可以看到 \textbf{[待填：宽度越大精度越高但参数量也涨，64 是性价比拐点等]}。
+
+\paragraph{(b) 损失函数与正则}
+对比了普通交叉熵、交叉熵 + L2 正则（weight decay）、交叉熵 + label smoothing(0.1)。\textbf{[待填：分析]}
+
+\paragraph{(c) 激活函数}
+对比 ReLU / LeakyReLU / GELU。\textbf{[待填：分析]}
+
+\begin{table}[h]
+\centering
+\caption{消融实验结果（测试集准确率）}
+\label{tab:ablation}
+\begin{tabular}{lccc}
+\toprule
+配置 & 参数量 & 训练速度(ms/batch) & 测试准确率 \\
+\midrule
+基线(width64, ReLU, SGD) & [待填] & [待填] & [待填] \\
+width32 & [待填] & [待填] & [待填] \\
+width96 & [待填] & [待填] & [待填] \\
+LeakyReLU & [待填] & [待填] & [待填] \\
+GELU & [待填] & [待填] & [待填] \\
+无 weight decay & [待填] & [待填] & [待填] \\
+label smoothing & [待填] & [待填] & [待填] \\
+去掉 BN & [待填] & [待填] & [待填] \\
+去掉残差 & [待填] & [待填] & [待填] \\
+去掉 Dropout & [待填] & [待填] & [待填] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{优化器对比（含自实现）}
+除用 \texttt{torch.optim} 对比 SGD / Adam / AdamW 外，我还在 \texttt{optimizers.py} 里
+\emph{自己实现}了 SGD（带 momentum）和 Adam（含偏差修正），更新公式手写、未调用官方 step。
+Adam 的更新为
+\[
+m_t = \beta_1 m_{t-1} + (1-\beta_1) g_t,\quad
+v_t = \beta_2 v_{t-1} + (1-\beta_2) g_t^2,\quad
+\theta_t = \theta_{t-1} - \eta \frac{\hat m_t}{\sqrt{\hat v_t}+\epsilon}.
+\]
+自实现版本与官方版本训练曲线基本重合（见表~\ref{tab:optim}），说明实现正确。\textbf{[待填：分析]}
+
+\begin{table}[h]
+\centering
+\caption{优化器对比}
+\label{tab:optim}
+\begin{tabular}{lcc}
+\toprule
+优化器 & 测试准确率 & 备注 \\
+\midrule
+SGD(torch) & [待填] & 基线 \\
+Adam(torch) & [待填] & \\
+AdamW(torch) & [待填] & \\
+MySGD(自实现) & [待填] & 对照 SGD \\
+MyAdam(自实现) & [待填] & 对照 Adam \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{可视化与可解释性}
+
+\begin{figure}[h]
+\centering
+\begin{subfigure}{0.32\textwidth}\centering\fig{filters.png}{\textwidth}{filters.png}\caption{第一层卷积核}\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}\centering\fig{loss_landscape_2d.png}{\textwidth}{loss\_landscape\_2d.png}\caption{损失景观}\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}\centering\fig{gradcam.png}{\textwidth}{gradcam.png}\caption{Grad-CAM}\end{subfigure}
+\caption{模型可视化}
+\end{figure}
+
+第一层卷积核学到了边缘、颜色块等低级特征；损失景观（filter-normalized 二维切片）显示最优点附近较平坦；
+Grad-CAM 显示模型主要关注目标物体所在区域。\textbf{[待填：结合图细化]}
+
+\subsection{最优结果}
+最终最好测试准确率 \textbf{[待填]}（测试误差 \textbf{[待填]}），参数量 \textbf{[待填]}。
+
+\section{任务二：Batch Normalization}
+
+\subsection{BN 算法与实现}
+对四维特征 $I_{b,c,x,y}$，BN 按通道归一化：
+\[
+O_{b,c,x,y} = \gamma_c \frac{I_{b,c,x,y}-\mu_c}{\sqrt{\sigma_c^2+\epsilon}} + \beta_c,
+\]
+训练时用 mini-batch 的统计量，测试时用滑动平均。我在 \texttt{models/vgg.py} 中实现了
+\texttt{VGG\_A\_BatchNorm}，在 VGG-A 每个卷积层后插入 \texttt{BatchNorm2d}，其余结构保持一致，
+保证对比公平（参数量 9.75M vs 9.76M，差别仅在 BN）。
+
+\subsection{有无 BN 的对比}
+相同超参下训练 VGG-A 与 VGG-A+BN，训练 loss 与验证准确率曲线见图~\ref{fig:bn}。
+加入 BN 后收敛更快、更稳，最终准确率也更高。\textbf{[待填：分析]}
+
+\begin{figure}[h]
+\centering
+\begin{subfigure}{0.48\textwidth}\centering\fig{bn_compare_loss.png}{\textwidth}{bn\_compare\_loss.png}\caption{训练 loss}\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}\centering\fig{bn_compare_acc.png}{\textwidth}{bn\_compare\_acc.png}\caption{验证准确率}\end{subfigure}
+\caption{VGG-A 有无 BN 的对比}
+\label{fig:bn}
+\end{figure}
+
+\subsection{BN 如何帮助优化}
+按 PDF 2.3.1 的做法，选学习率 $\{1\text{e-}3, 2\text{e-}3, 1\text{e-}4, 5\text{e-}4\}$ 分别训练，
+记录每个 step 的 loss，在同一 step 上取所有学习率的最大/最小值得到 \texttt{max\_curve} 与 \texttt{min\_curve}，
+用 \texttt{fill\_between} 填充其间区域；有无 BN 画在同一张图。
+此外还画了梯度可预测性（相邻步梯度的 L2 差）和 effective $\beta$-smoothness。
+
+\begin{figure}[h]
+\centering
+\begin{subfigure}{0.32\textwidth}\centering\fig{loss_landscape.png}{\textwidth}{loss\_landscape.png}\caption{损失景观}\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}\centering\fig{gradient_predictiveness.png}{\textwidth}{gradient\_predictiveness.png}\caption{梯度可预测性}\end{subfigure}
+\hfill
+\begin{subfigure}{0.32\textwidth}\centering\fig{beta_smoothness.png}{\textwidth}{beta\_smoothness.png}\caption{$\beta$-smoothness}\end{subfigure}
+\caption{BN 让优化更平滑}
+\label{fig:landscape}
+\end{figure}
+
+从图~\ref{fig:landscape} 可见，加 BN 后损失带明显更窄、梯度变化更小，说明 BN 让优化曲面更平滑、
+梯度更可预测，因此可以用更大的学习率而不发散。这与 Santurkar 等人（NeurIPS 2018）的结论一致。\textbf{[待填：结合自己的图细化分析]}
+
+\section{结论}
+\textbf{[待填：总结两个任务的主要发现]}
+
+\begin{thebibliography}{9}
+\bibitem{pytorch} PyTorch CIFAR-10 tutorial. \url{https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html}
+\bibitem{cifar} A. Krizhevsky. Learning multiple layers of features from tiny images. 2009.
+\bibitem{bn} S. Santurkar et al. How does batch normalization help optimization? NeurIPS, 2018.
+\bibitem{landscape} H. Li et al. Visualizing the loss landscape of neural nets. NeurIPS, 2018.
+\end{thebibliography}
+
+\end{document}

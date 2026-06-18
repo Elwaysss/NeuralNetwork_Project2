@@ -1,0 +1,39 @@
+# 数据集（CIFAR-10 体积大且可自动下载，不入库）
+data/cifar-10-batches-py/
+data/cifar-10-python.tar.gz
+**/cifar-10-batches-py/
+**/cifar-10-python.tar.gz
+*.tar.gz
+
+# 模型权重（超 GitHub 100MB 限制，放网盘）
+*.pth
+*.pt
+*.ckpt
+checkpoints/
+reports/models/
+
+# 训练产物
+*.txt.bak
+runs/
+logs/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+.DS_Store
+
+# 编辑器
+.idea/
+.vscode/
+
+# LaTeX 编译中间产物
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/*.synctex.gz
+report/*.fls
+report/*.fdb_latexmk
